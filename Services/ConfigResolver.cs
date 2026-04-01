@@ -19,17 +19,20 @@ public class ConfigResolver
 
     /// <summary>
     /// Resolves a config key, expanding any ${...} references.
-    /// Implements cycle detection to prevent infinite recursion.
     /// </summary>
     public string ResolveRecursive(string key, HashSet<string> visitedKeys = null)
     {
         if (visitedKeys == null)
+        {
             visitedKeys = new HashSet<string>();
+        }
 
         // Check for circular reference
         if (visitedKeys.Contains(key))
+        {
             throw new InvalidOperationException(
-                $"Circular config reference detected at key '{key}'.");
+                $"Circular reference detected: config key '{key}' is part of a cycle.");
+        }
 
         visitedKeys.Add(key);
 
@@ -44,7 +47,7 @@ public class ConfigResolver
             if (end < 0) break;
 
             string refKey = value.Substring(start + 2, end - start - 2);
-            string resolved = ResolveRecursive(refKey, new HashSet<string>(visitedKeys));
+            string resolved = ResolveRecursive(refKey, visitedKeys);
             value = value[..start] + resolved + value[(end + 1)..];
         }
 

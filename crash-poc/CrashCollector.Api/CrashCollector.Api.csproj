@@ -12,15 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Link shared source files from Console project (avoids dual-entrypoint conflict) -->
-    <Compile Include="..\CrashCollector.Console\Data\CrashDb.cs" Link="Data\CrashDb.cs" />
-    <Compile Include="..\CrashCollector.Console\Data\CrashRepository.cs" Link="Data\CrashRepository.cs" />
-    <Compile Include="..\CrashCollector.Console\Data\BucketRepository.cs" Link="Data\BucketRepository.cs" />
-    <Compile Include="..\CrashCollector.Console\Models\CrashReport.cs" Link="Models\CrashReport.cs" />
-    <Compile Include="..\CrashCollector.Console\Models\CrashMetadata.cs" Link="Models\CrashMetadata.cs" />
-    <Compile Include="..\CrashCollector.Console\Models\StackSignature.cs" Link="Models\StackSignature.cs" />
-    <Compile Include="..\CrashCollector.Console\ILocalDumpStore.cs" Link="ILocalDumpStore.cs" />
-    <Compile Include="..\CrashCollector.Console\Bucketizer.cs" Link="Bucketizer.cs" />
+    <!-- AI project already links the shared Console source files, so we get them transitively -->
+    <ProjectReference Include="..\CrashCollector.AI\CrashCollector.AI.csproj" />
   </ItemGroup>
 
 </Project>

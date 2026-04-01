@@ -48,8 +48,9 @@ export default function BucketsPage() {
               <th>Exception Code</th>
               <th>Key Frame 1</th>
               <th>Crash Count</th>
+              <th>AI Status</th>
+              <th>Fix</th>
               <th>First Seen</th>
-              <th>Last Seen</th>
             </tr>
           </thead>
           <tbody>
@@ -73,17 +74,45 @@ export default function BucketsPage() {
                     <span style={{ color: 'var(--text-muted)' }}>n/a</span>
                   )}
                 </td>
-                <td className="truncate mono" style={{ fontSize: 12, maxWidth: 300 }}>
+                <td className="truncate mono" style={{ fontSize: 12, maxWidth: 250 }}>
                   {b.keyFrame1 ?? 'Unknown'}
                 </td>
                 <td style={{ textAlign: 'center' }}>
                   <span className="badge badge-count">{b.crashCount}</span>
                 </td>
-                <td style={{ whiteSpace: 'nowrap' }}>
-                  {new Date(b.firstSeenUtc).toLocaleDateString()}
+                <td>
+                  {b.aiStatus ? (
+                    <span style={{
+                      display: 'inline-block', padding: '2px 8px', borderRadius: 4,
+                      fontSize: 11, fontWeight: 600,
+                      background: b.aiStatus === 'Completed' ? 'rgba(80,200,120,0.15)' :
+                                  b.aiStatus === 'Failed' ? 'rgba(240,83,101,0.15)' :
+                                  'rgba(255,180,50,0.15)',
+                      color: b.aiStatus === 'Completed' ? 'var(--green)' :
+                             b.aiStatus === 'Failed' ? 'var(--red)' : 'var(--orange)',
+                    }}>
+                      {b.aiStatus}
+                      {b.aiConfidence != null && b.aiConfidence > 0 ? ` ${(b.aiConfidence * 100).toFixed(0)}%` : ''}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Not analyzed</span>
+                  )}
+                </td>
+                <td>
+                  {b.prUrl ? (
+                    <a href={b.prUrl} target="_blank" rel="noopener noreferrer"
+                       onClick={(e) => e.stopPropagation()}
+                       style={{ fontSize: 11 }}>
+                      {b.fixStatus ?? 'PR'}
+                    </a>
+                  ) : b.fixStatus ? (
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{b.fixStatus}</span>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
+                  )}
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  {new Date(b.lastSeenUtc).toLocaleDateString()}
+                  {new Date(b.firstSeenUtc).toLocaleDateString()}
                 </td>
               </tr>
             ))}

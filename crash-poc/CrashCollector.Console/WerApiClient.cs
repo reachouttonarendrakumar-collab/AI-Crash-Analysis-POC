@@ -255,13 +255,113 @@ public sealed class WerApiClient : IWerApiClient, IDisposable
     }
 
     // =========================================================================
-    //  Mock fallback – realistic WER-shaped data
+    //  Local crash dump fallback – reads real dumps from DellDigitalDelivery.App
     // =========================================================================
 
     private static IReadOnlyList<CrashReport> GenerateMockCrashes(
         string executableName, int maxResults)
     {
-        // Crash signatures observed in production (from CRASH_PREVENTION_HARDENING.md)
+        // First, try to load real crash dumps from the DellDigitalDelivery.App output
+        var crashDumpsDir = FindCrashDumpsDirectory();
+        if (crashDumpsDir is not null && Directory.Exists(crashDumpsDir))
+        {
+            var reports = LoadFromLocalCrashDumps(crashDumpsDir, executableName, maxResults);
+            if (reports.Count > 0)
+            {
+                System.Console.WriteLine(
+                    $"[WerApiClient] Loaded {reports.Count} crash(es) from local dumps: {crashDumpsDir}");
+                return reports;
+            }
+        }
+
+        // Fallback to synthetic mock data if no local dumps found
+        System.Console.WriteLine("[WerApiClient] No local crash dumps found, generating synthetic data.");
+        return GenerateSyntheticMockCrashes(executableName, maxResults);
+    }
+
+    /// <summary>
+    /// Scans the local crash-dumps directory for real dump files from DellDigitalDelivery.App.
+    /// Each subdirectory contains a dump.dmp + metadata.json.
+    /// </summary>
+    private static IReadOnlyList<CrashReport> LoadFromLocalCrashDumps(
+        string crashDumpsDir, string executableName, int maxResults)
+    {
+        var results = new List<CrashReport>();
+        var jsonOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        foreach (var dir in Directory.GetDirectories(crashDumpsDir))
+        {
+            if (results.Count >= maxResults) break;
+
+            var metadataPath = Path.Combine(dir, "metadata.json");
+            if (!File.Exists(metadataPath)) continue;
+
+            try
+            {
+                var json = File.ReadAllText(metadataPath);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                var crashId = root.GetProperty("crashId").GetString() ?? Path.GetFileName(dir);
+                var appVersion = root.TryGetProperty("appVersion", out var av) ? av.GetString() ?? "3.9.1000.0" : "3.9.1000.0";
+                var timestamp = root.TryGetProperty("timestamp", out var ts) ? ts.GetDateTimeOffset() : DateTimeOffset.UtcNow;
+                var exCode = root.TryGetProperty("exceptionCode", out var ec) ? ec.GetString() : null;
+                var exName = root.TryGetProperty("exceptionName", out var en) ? en.GetString() : null;
+
+                var dumpPath = Path.Combine(dir, "dump.dmp");
+                var hasDump = File.Exists(dumpPath);
+
+                results.Add(new CrashReport
+                {
+                    CrashId = crashId,
+                    Timestamp = timestamp,
+                    AppVersion = appVersion,
+                    AppName = root.TryGetProperty("appName", out var an) ? an.GetString() ?? executableName : executableName,
+                    FailureBucket = exCode is not null && exName is not null
+                        ? $"{exCode[2..]}_{exName.Replace(' ', '_')}"
+                        : null,
+                    // Use a local:// URL scheme to tell LocalDumpStore to read the file directly
+                    DumpDownloadUrl = hasDump ? $"local://{Path.GetFullPath(dumpPath)}" : null
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"[WerApiClient] WARN: Failed to parse {metadataPath}: {ex.Message}");
+            }
+        }
+
+        results.Sort((a, b) => b.Timestamp.CompareTo(a.Timestamp));
+        return results.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Finds the crash-dumps directory. Searches relative to CWD and common locations.
+    /// </summary>
+    private static string? FindCrashDumpsDirectory()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(".", "data", "crash-dumps"),
+            Path.Combine("..", "data", "crash-dumps"),
+            Path.Combine(".", "..", "data", "crash-dumps"),
+        };
+
+        foreach (var c in candidates)
+        {
+            var full = Path.GetFullPath(c);
+            if (Directory.Exists(full) && Directory.GetDirectories(full).Length > 0)
+                return full;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Original synthetic mock data generator (used when no local dumps exist).
+    /// </summary>
+    private static IReadOnlyList<CrashReport> GenerateSyntheticMockCrashes(
+        string executableName, int maxResults)
+    {
         var buckets = new[]
         {
             ("E0434352", "Unhandled .NET Exception"),
@@ -282,8 +382,8 @@ public sealed class WerApiClient : IWerApiClient, IDisposable
         {
             var (code, description) = buckets[rng.Next(buckets.Length)];
             var version = versions[rng.Next(versions.Length)];
-            var age = TimeSpan.FromHours(rng.Next(1, 720)); // up to 30 days back
-            var hasDump = rng.NextDouble() > 0.3; // ~70 % have a cab
+            var age = TimeSpan.FromHours(rng.Next(1, 720));
+            var hasDump = rng.NextDouble() > 0.3;
 
             results.Add(new CrashReport
             {
@@ -298,7 +398,6 @@ public sealed class WerApiClient : IWerApiClient, IDisposable
             });
         }
 
-        // Sort descending by timestamp (newest first), matching real API behaviour
         results.Sort((a, b) => b.Timestamp.CompareTo(a.Timestamp));
         return results.AsReadOnly();
     }

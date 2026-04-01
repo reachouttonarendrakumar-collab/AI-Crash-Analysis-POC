@@ -21,6 +21,7 @@ public sealed class LocalDumpStore : ILocalDumpStore
     private const string MetadataFileName = "metadata.json";
     private const long MaxDumpSizeBytes = 500 * 1024 * 1024; // 500 MB safety cap
     private const string MockDumpHost = "wer.microsoft.com"; // mock URLs from WerApiClient fallback
+    private const string LocalDumpScheme = "local://"; // local dump file references
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -127,8 +128,28 @@ public sealed class LocalDumpStore : ILocalDumpStore
             long size;
 
             var isMockUrl = IsMockUrl(report.DumpDownloadUrl);
+            var isLocalDump = IsLocalDumpUrl(report.DumpDownloadUrl);
 
-            if (isMockUrl)
+            if (isLocalDump)
+            {
+                // Copy the real dump file from the local crash-dumps directory
+                var localPath = report.DumpDownloadUrl!.Substring(LocalDumpScheme.Length);
+                if (File.Exists(localPath))
+                {
+                    File.Copy(localPath, tempPath, overwrite: true);
+                    size = new FileInfo(tempPath).Length;
+                }
+                else
+                {
+                    TryDelete(tempPath);
+                    return new DumpStoreResult
+                    {
+                        CrashId = crashId,
+                        Error = $"Local dump file not found: {localPath}"
+                    };
+                }
+            }
+            else if (isMockUrl)
             {
                 // Generate a synthetic minidump-like file for POC/mock mode
                 size = await WriteMockCabAsync(tempPath, report.CrashId, ct).ConfigureAwait(false);
@@ -269,6 +290,12 @@ public sealed class LocalDumpStore : ILocalDumpStore
         if (string.IsNullOrWhiteSpace(url)) return false;
         return Uri.TryCreate(url, UriKind.Absolute, out var uri)
                && uri.Host.Equals(MockDumpHost, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsLocalDumpUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        return url.StartsWith(LocalDumpScheme, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

@@ -1,13 +1,15 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getCrashes, getBuckets } from '../api';
+import { getCrashes, getBuckets, getAIAnalyses, getAIFixes } from '../api';
 import { useFetch } from '../hooks/useFetch';
 import { Loading, ErrorBox, EmptyState } from '../components/Loading';
 
 export default function OverviewPage() {
-  const crashes = useFetch(() => getCrashes(1000), []); // Get more for trend analysis
+  const crashes = useFetch(() => getCrashes(1000), []);
   const buckets = useFetch(() => getBuckets(100), []);
+  const aiAnalyses = useFetch(() => getAIAnalyses(100), []);
+  const aiFixes = useFetch(() => getAIFixes(100), []);
 
   // Memoized calculations - always called, even if data is still loading
   const topException = useMemo(() => {
@@ -54,6 +56,11 @@ export default function OverviewPage() {
       count,
     }));
   }, [crashes.data]);
+
+  // AI metrics
+  const aiAnalyzed = aiAnalyses.data?.analyses?.length ?? 0;
+  const aiFixed = aiFixes.data?.fixes?.filter(f => f.prStatus === 'Open' || f.prStatus === 'Merged').length ?? 0;
+  const aiPending = (aiAnalyses.data?.analyses?.filter(a => a.status === 'ManualReview').length ?? 0);
 
   // Early returns after all hooks are called
   if (crashes.loading || buckets.loading) return <Loading message="Loading dashboard data..." />;
@@ -114,6 +121,32 @@ export default function OverviewPage() {
             {totalBuckets > 0 ? (totalCrashes / totalBuckets).toFixed(1) : '0'}
           </div>
           <div className="stat-sub">Crashes per bucket</div>
+        </div>
+      </div>
+
+      {/* AI Metrics */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-label">AI Analyzed</div>
+          <div className="stat-value" style={{ color: 'var(--accent)' }}>{aiAnalyzed}</div>
+          <div className="stat-sub">Buckets analyzed by Gemini</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Fixes Generated</div>
+          <div className="stat-value" style={{ color: 'var(--green)' }}>{aiFixed}</div>
+          <div className="stat-sub">PRs open or merged</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Manual Review</div>
+          <div className="stat-value" style={{ color: 'var(--orange)' }}>{aiPending}</div>
+          <div className="stat-sub">Need developer attention</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Auto-Fix Rate</div>
+          <div className="stat-value">
+            {aiAnalyzed > 0 ? ((aiFixed / aiAnalyzed) * 100).toFixed(0) : '0'}%
+          </div>
+          <div className="stat-sub">Of analyzed buckets</div>
         </div>
       </div>
 

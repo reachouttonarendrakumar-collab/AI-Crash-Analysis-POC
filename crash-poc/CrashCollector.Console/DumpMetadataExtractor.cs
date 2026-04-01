@@ -56,9 +56,15 @@ public sealed partial class DumpMetadataExtractor
         if (sig == MscfSignature)
             return ExtractFromMockDump(crashId, dumpPath);
 
-        // Real MDMP file – try WinDbg first, then fall back to header parsing
+        // Real MDMP file – check companion metadata first (DellDigitalDelivery.App dumps),
+        // then try WinDbg, then fall back to header parsing
         if (sig == MdmpSignature)
         {
+            // Check if there's a rich metadata.json from DellDigitalDelivery.App alongside the dump
+            var richMeta = TryLoadRichMetadataForDump(crashId, dumpPath);
+            if (richMeta is not null)
+                return richMeta;
+
             if (CdbPath.Value is not null)
             {
                 try
@@ -66,7 +72,6 @@ public sealed partial class DumpMetadataExtractor
                     var result = await ExtractViaWinDbgAsync(crashId, dumpPath, CdbPath.Value, ct)
                         .ConfigureAwait(false);
                     if (result.Error is null) return result;
-                    // If WinDbg failed, fall through to header parsing
                 }
                 catch { /* fall through */ }
             }
@@ -339,33 +344,34 @@ public sealed partial class DumpMetadataExtractor
             try
             {
                 var json = File.ReadAllText(metadataPath);
-                // Parse the failureBucket to derive exception code
-                var bucketMatch = Regex.Match(json, @"""failureBucket""\s*:\s*""([^""]+)""");
-                if (bucketMatch.Success)
+
+                // Try to load stack frames from the crash-dumps metadata (from DellDigitalDelivery.App)
+                var stackFramesLoaded = TryLoadStackFramesFromMetadata(json, meta);
+
+                if (!stackFramesLoaded)
                 {
-                    var bucket = bucketMatch.Groups[1].Value;
-                    // Bucket format: "C0000005_Access_Violation"
-                    var underscoreIdx = bucket.IndexOf('_');
-                    if (underscoreIdx > 0)
+                    // Parse the failureBucket to derive exception code (old mock path)
+                    var bucketMatch = Regex.Match(json, @"""failureBucket""\s*:\s*""([^""]+)""");
+                    if (bucketMatch.Success)
                     {
-                        var code = "0x" + bucket[..underscoreIdx];
-                        meta.ExceptionCode = code;
-                        meta.ExceptionName = LookupExceptionName(code);
+                        var bucket = bucketMatch.Groups[1].Value;
+                        var underscoreIdx = bucket.IndexOf('_');
+                        if (underscoreIdx > 0)
+                        {
+                            var code = "0x" + bucket[..underscoreIdx];
+                            meta.ExceptionCode = code;
+                            meta.ExceptionName = LookupExceptionName(code);
+                        }
                     }
+
+                    // Faulting module from appName
+                    var appMatch = Regex.Match(json, @"""appName""\s*:\s*""([^""]+)""");
+                    if (appMatch.Success)
+                        meta.FaultingModule = appMatch.Groups[1].Value;
+
+                    meta.ThreadCount = 4 + Math.Abs(crashId.GetHashCode() % 20);
+                    meta.StackFrames = GenerateMockStackFrames(meta.ExceptionCode, crashId);
                 }
-
-                // Faulting module from appName
-                var appMatch = Regex.Match(json, @"""appName""\s*:\s*""([^""]+)""");
-                if (appMatch.Success)
-                    meta.FaultingModule = appMatch.Groups[1].Value;
-
-                // Synthetic thread count from the crash id hash (deterministic)
-                meta.ThreadCount = 4 + Math.Abs(crashId.GetHashCode() % 20);
-
-                // Generate synthetic stack frames.
-                // Key: crashes with the SAME exception code get the SAME top
-                // application frames so they land in the same bucket.
-                meta.StackFrames = GenerateMockStackFrames(meta.ExceptionCode, crashId);
             }
             catch
             {
@@ -374,6 +380,115 @@ public sealed partial class DumpMetadataExtractor
         }
 
         return meta;
+    }
+
+    /// <summary>
+    /// For MDMP dumps copied from crash-dumps dir, find the original metadata.json
+    /// by looking in the crash-dumps directory tree for a matching crashId folder.
+    /// </summary>
+    private static CrashMetadata? TryLoadRichMetadataForDump(string crashId, string dumpPath)
+    {
+        // The dump may have been copied by LocalDumpStore into data/dumps/{crashId}/dump.cab
+        // but the original metadata.json is in data/crash-dumps/{crashId}/metadata.json
+        var candidates = new List<string>();
+
+        // Check alongside the dump itself
+        var dumpDir = Path.GetDirectoryName(dumpPath);
+        if (dumpDir is not null)
+            candidates.Add(Path.Combine(dumpDir, "metadata.json"));
+
+        // Check crash-dumps directory patterns
+        var searchRoots = new[]
+        {
+            Path.Combine(".", "data", "crash-dumps"),
+            Path.Combine("..", "data", "crash-dumps"),
+        };
+        foreach (var root in searchRoots)
+        {
+            var full = Path.GetFullPath(root);
+            if (Directory.Exists(full))
+            {
+                candidates.Add(Path.Combine(full, crashId, "metadata.json"));
+                // Also check all subdirs in case crash ID mapping differs
+                foreach (var dir in Directory.GetDirectories(full))
+                {
+                    if (Path.GetFileName(dir).Contains(crashId[..Math.Min(12, crashId.Length)], StringComparison.OrdinalIgnoreCase))
+                        candidates.Add(Path.Combine(dir, "metadata.json"));
+                }
+            }
+        }
+
+        foreach (var metaPath in candidates)
+        {
+            if (!File.Exists(metaPath)) continue;
+            try
+            {
+                var json = File.ReadAllText(metaPath);
+                var meta = new CrashMetadata
+                {
+                    CrashId = crashId,
+                    DumpPath = dumpPath,
+                    DumpSignature = "0x4D504D44",
+                };
+                if (TryLoadStackFramesFromMetadata(json, meta) && meta.StackFrames?.Count > 0)
+                    return meta;
+            }
+            catch { /* continue searching */ }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Tries to load rich metadata from a DellDigitalDelivery.App crash record JSON.
+    /// Returns true if successful, populating the CrashMetadata fields.
+    /// </summary>
+    private static bool TryLoadStackFramesFromMetadata(string json, CrashMetadata meta)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            // Check for stackFrames array — this indicates a DellDigitalDelivery.App dump
+            if (!root.TryGetProperty("stackFrames", out var framesEl) ||
+                framesEl.ValueKind != System.Text.Json.JsonValueKind.Array ||
+                framesEl.GetArrayLength() == 0)
+                return false;
+
+            // Load stack frames
+            var frames = new List<string>();
+            foreach (var frame in framesEl.EnumerateArray())
+            {
+                var f = frame.GetString();
+                if (!string.IsNullOrWhiteSpace(f))
+                    frames.Add(f);
+            }
+            meta.StackFrames = frames.AsReadOnly();
+
+            // Load exception info
+            if (root.TryGetProperty("exceptionCode", out var ec))
+            {
+                meta.ExceptionCode = ec.GetString();
+                meta.ExceptionName = LookupExceptionName(meta.ExceptionCode);
+            }
+            if (root.TryGetProperty("exceptionName", out var en))
+                meta.ExceptionName = en.GetString();
+            if (root.TryGetProperty("faultingModule", out var fm))
+                meta.FaultingModule = fm.GetString();
+            if (root.TryGetProperty("threadCount", out var tc))
+                meta.ThreadCount = tc.GetInt32();
+            if (root.TryGetProperty("scenarioName", out var sn))
+                meta.ExtractionMethod = $"DellApp:{sn.GetString()}";
+            else
+                meta.ExtractionMethod = "DellAppDump";
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>

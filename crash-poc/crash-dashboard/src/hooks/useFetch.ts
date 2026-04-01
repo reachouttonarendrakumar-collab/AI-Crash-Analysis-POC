@@ -1,17 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface FetchState<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 export function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[] = []): FetchState<T> {
-  const [state, setState] = useState<FetchState<T>>({
+  const [state, setState] = useState<{ data: T | null; loading: boolean; error: string | null }>({
     data: null,
     loading: true,
     error: null,
   });
+  const [trigger, setTrigger] = useState(0);
+
+  const refetch = useCallback(() => setTrigger((t) => t + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,7 +33,7 @@ export function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Fe
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, trigger]);
 
-  return state;
+  return { ...state, refetch };
 }

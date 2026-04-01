@@ -194,6 +194,9 @@ public sealed class CrashAnalyzer
 
     private static void ParseAnalysisResponse(string text, AnalysisResult result, Dictionary<string, string> sourceContext)
     {
+        // Normalize line endings (LLMs may return \r\n)
+        text = text.Replace("\r\n", "\n");
+
         // Parse ROOT_CAUSE
         var rootCauseMatch = Regex.Match(text, @"ROOT_CAUSE:\s*\n(.*?)(?=\nCONFIDENCE:)", RegexOptions.Singleline);
         if (rootCauseMatch.Success)
@@ -219,10 +222,26 @@ public sealed class CrashAnalyzer
         if (fixDescMatch.Success)
             result.FixDescription = fixDescMatch.Groups[1].Value.Trim();
 
-        // Parse FIXED_CODE
-        var codeMatch = Regex.Match(text, @"FIXED_CODE:\s*\n```(?:csharp)?\s*\n(.*?)```", RegexOptions.Singleline);
+        // Parse FIXED_CODE — handle various LLM formatting (newline or same-line code fence)
+        var codeMatch = Regex.Match(text, @"FIXED_CODE:\s*\n?```(?:csharp)?\s*\n(.*?)```", RegexOptions.Singleline);
         if (codeMatch.Success)
             result.FixedCode = codeMatch.Groups[1].Value.Trim();
+
+        // Fallback: if no closing ``` found (truncated response), grab everything after the opening fence
+        if (result.FixedCode is null || result.FixedCode.Length == 0)
+        {
+            var fallback = Regex.Match(text, @"FIXED_CODE:\s*\n?```(?:csharp)?\s*\n(.+)", RegexOptions.Singleline);
+            if (fallback.Success)
+                result.FixedCode = fallback.Groups[1].Value.Trim();
+        }
+
+        System.Console.WriteLine($"[CrashAnalyzer] Parse results — RootCause:{result.RootCause?.Length ?? 0}chars, Confidence:{result.Confidence}, File:{result.AffectedFile}, Func:{result.AffectedFunction}, FixDesc:{result.FixDescription?.Length ?? 0}chars, FixedCode:{result.FixedCode?.Length ?? 0}chars");
+        if (result.FixedCode is null || result.FixedCode.Length == 0)
+        {
+            // Log the tail of the LLM response to diagnose why FIXED_CODE wasn't parsed
+            var tail = text.Length > 300 ? text[^300..] : text;
+            System.Console.WriteLine($"[CrashAnalyzer] FIXED_CODE not parsed. Response tail: {tail}");
+        }
 
         // Validate/correct AffectedFile against known source context paths
         if (result.AffectedFile is not null && sourceContext.Count > 0)

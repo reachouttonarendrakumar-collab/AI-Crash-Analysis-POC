@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSG Reliability Transformation: AI-Powered Crash Analysis</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0f172a;--bg-card:#1e293b;--accent:#3b82f6;--green:#22c55e;--orange:#f59e0b;--red:#ef4444;--purple:#a855f7;--text:#f1f5f9;--text-muted:#94a3b8;--border:#334155;--font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
+  .slide{display:none;width:100vw;height:100vh;padding:44px 64px;flex-direction:column;justify-content:center}
+  .slide.active{display:flex}
+  .nav-bar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:10px 40px;background:rgba(15,23,42,.92);border-top:1px solid var(--border);z-index:100;backdrop-filter:blur(8px)}
+  .nav-bar button{background:var(--accent);color:#fff;border:none;padding:7px 22px;border-radius:6px;font-family:var(--font);font-size:13px;cursor:pointer}
+  .nav-bar button:hover{opacity:.85}.nav-bar button:disabled{opacity:.3;cursor:default}
+  .nav-bar .counter{color:var(--text-muted);font-size:12px}
+  .slide-title{text-align:center}
+  .slide-title h1{font-size:48px;font-weight:700;margin-bottom:12px;line-height:1.15}
+  .slide-title .subtitle{font-size:20px;color:var(--text-muted);font-weight:300;margin-bottom:36px}
+  .slide-title .meta{font-size:14px;color:var(--text-muted)}
+  .accent{color:var(--accent)}.green{color:var(--green)}.orange{color:var(--orange)}.purple{color:var(--purple)}
+  h2{font-size:32px;font-weight:600;margin-bottom:20px}
+  h2 .num{color:var(--accent);font-weight:700;margin-right:10px}
+  h3{font-size:18px;font-weight:500;margin-bottom:10px;color:var(--accent)}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:16px}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:16px}
+  .four-col{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-top:16px}
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:20px}
+  .card h3{margin-bottom:8px}
+  ul{list-style:none;padding:0}
+  ul li{padding:5px 0;padding-left:20px;position:relative;font-size:15px;line-height:1.5;color:var(--text)}
+  ul li::before{content:'>';position:absolute;left:0;color:var(--accent);font-family:var(--mono);font-weight:700}
+  ul.check li::before{content:'\2713';color:var(--green)}
+  ul.dash li::before{content:'\2014';color:var(--orange)}
+  ul.x li::before{content:'\2717';color:var(--red)}
+  ul.star li::before{content:'\2605';color:var(--purple)}
+  .stat-row{display:flex;gap:20px;margin:20px 0}
+  .stat-box{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px 24px;flex:1;text-align:center}
+  .stat-box .num{font-size:36px;font-weight:700;color:var(--accent)}
+  .stat-box .label{font-size:12px;color:var(--text-muted);margin-top:4px}
+  .flow{display:flex;align-items:center;gap:10px;margin:16px 0;flex-wrap:wrap}
+  .flow-step{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:13px;text-align:center;min-width:100px}
+  .flow-step .icon{font-size:22px;margin-bottom:4px}
+  .flow-step .label{font-size:11px;color:var(--text-muted)}
+  .flow-arrow{color:var(--accent);font-size:18px;font-weight:700}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+  table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  table td{padding:8px 12px;border-bottom:1px solid var(--border)}
+  table tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:600;font-family:var(--mono)}
+  .badge-blue{background:rgba(59,130,246,.15);color:var(--accent)}
+  .badge-green{background:rgba(34,197,94,.15);color:var(--green)}
+  .badge-orange{background:rgba(245,158,11,.15);color:var(--orange)}
+  .badge-red{background:rgba(239,68,68,.15);color:var(--red)}
+  .badge-purple{background:rgba(168,85,247,.15);color:var(--purple)}
+  .quote{border-left:4px solid var(--accent);padding:12px 20px;margin:16px 0;font-size:16px;font-style:italic;color:var(--text-muted);background:rgba(59,130,246,.05);border-radius:0 8px 8px 0}
+  .timeline{margin-top:12px}
+  .timeline-item{display:flex;gap:14px;padding:6px 0;align-items:flex-start}
+  .timeline-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);margin-top:6px;flex-shrink:0}
+  .timeline-dot.done{background:var(--green)}.timeline-dot.next{background:var(--orange)}.timeline-dot.ai{background:var(--purple)}
+  .timeline-label{font-size:15px}.timeline-sub{font-size:12px;color:var(--text-muted)}
+  p.desc{font-size:16px;line-height:1.6;color:var(--text-muted);margin-bottom:16px}
+  .pill{display:inline-block;padding:4px 14px;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px}
+  .exec-highlight{background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(59,130,246,.1));border-left:4px solid var(--green);padding:20px;margin:16px 0;border-radius:0 8px 8px 0}
+  .value-prop{display:flex;gap:16px;align-items:center;margin:12px 0}
+  .value-icon{font-size:24px;margin-right:8px}
+  .roi-box{background:linear-gradient(135deg,var(--bg-card),rgba(34,197,94,.05));border:1px solid var(--green);border-radius:12px;padding:20px;margin:16px 0}
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: TITLE -->
+<div class="slide slide-title active" id="s1">
+  <div>
+    <div style="font-size:13px;text-transform:uppercase;letter-spacing:.15em;color:var(--text-muted);margin-bottom:18px">Dell Technologies &bull; Client Solutions Group</div>
+    <h1>CSG Reliability Transformation</h1>
+    <div class="subtitle">AI-Powered Crash Analysis for Millions of Devices</div>
+    <div class="stat-row" style="justify-content:center;max-width:900px;margin:28px auto">
+      <div class="stat-box"><div class="num" style="font-size:32px">~100M</div><div class="label">Client Devices</div></div>
+      <div class="stat-box"><div class="num" style="font-size:32px;color:var(--green)">80%</div><div class="label">Faster Resolution</div></div>
+      <div class="stat-box"><div class="num" style="font-size:32px;color:var(--purple)">AI</div><div class="label">Auto-Remediation</div></div>
+      <div class="stat-box"><div class="num" style="font-size:32px;color:var(--green)">POC</div><div class="label">Validated</div></div>
+    </div>
+    <div class="meta">Executive Strategy &amp; Investment Proposal &nbsp;|&nbsp; <span class="accent">Q2 2026</span></div>
+  </div>
+</div>
+
+<!-- SLIDE 2: CSG RELIABILITY GOALS -->
+<div class="slide" id="s2">
+  <h2><span class="num">01</span> CSG Reliability Objectives</h2>
+  <p class="desc">Our commitment to customers: Reduce crashes, hangs, freezes, and BSODs while improving overall experience through systematic reliability engineering.</p>
+  <div class="exec-highlight">
+    <h3 style="color:var(--green);margin-bottom:16px">Immediate Targets (Feb 2026)</h3>
+    <div class="three-col">
+      <div class="card"><h3>📋 Inventory &amp; Track</h3><ul class="check"><li>All crashes across CSG apps</li><li>Hangs and freezes</li><li>File tickets for critical issues</li><li>Acquire logs at scale</li></ul></div>
+      <div class="card"><h3>🎯 Fix Dates &amp; Resiliency</h3><ul class="check"><li>Target fix dates by Feb 6, 2026</li><li>Added resiliency timelines</li><li>Systematic response process</li><li>Proactive prevention</li></ul></div>
+      <div class="card"><h3>🔧 Process &amp; Visibility</h3><ul class="check"><li>Streamlined log pulling</li><li>Automated analysis pipeline</li><li>Improved dashboards</li><li>Field visibility feedback</li></ul></div>
+    </div>
+  </div>
+  <div class="quote">"Built for rapid, repeatable incident triage at portfolio scale. Targets assume mini-dumps by default; full dumps for critical cases."</div>
+</div>
+
+<!-- SLIDE 3: CURRENT CHALLENGES -->
+<div class="slide" id="s3">
+  <h2><span class="num">02</span> Current Reliability Challenges</h2>
+  <p class="desc">Today's gaps prevent us from meeting CSG reliability objectives efficiently at enterprise scale.</p>
+  <div class="two-col">
+    <div>
+      <div class="stat-row" style="flex-wrap:wrap;gap:14px"><div class="stat-box" style="border-top:3px solid var(--red);flex:1 1 45%"><div class="num" style="color:var(--red);font-size:32px">90%</div><div class="label">Crash data never collected</div></div><div class="stat-box" style="border-top:3px solid var(--red);flex:1 1 45%"><div class="num" style="color:var(--red);font-size:32px">40h+</div><div class="label">Avg. time per crash</div></div><div class="stat-box" style="border-top:3px solid var(--red);flex:1 1 45%"><div class="num" style="color:var(--red);font-size:32px">&lt;100</div><div class="label">Device scale limit</div></div></div>
+      <div class="card" style="margin-top:16px">
+        <h3 style="color:var(--red);">Business Impact</h3>
+        <ul class="x" style="font-size:15px">
+          <li><strong>Customer Experience:</strong> Crashes persist, affecting brand perception</li>
+          <li><strong>Developer Productivity:</strong> Hours wasted on manual debugging</li>
+          <li><strong>Time to Market:</strong> Delayed releases due to quality issues</li>
+          <li><strong>Support Costs:</strong> High volume of crash-related tickets</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>Technical Gaps</h3>
+        <table style="font-size:14px">
+          <tr><td style="color:var(--text-muted);width:40%">Manual Collection</td><td>No centralized system; 90% data loss</td></tr>
+          <tr><td style="color:var(--text-muted);">No Symbol Automation</td><td>80% analysis failures from PDB mismatches</td></tr>
+          <tr><td style="color:var(--text-muted);">Slow Debugging</td><td>Manual downloads; no bucketing/grouping</td></tr>
+          <tr><td style="color:var(--text-muted);">No Analytics</td><td>Patterns missed; regressions undetected</td></tr>
+          <tr><td style="color:var(--text-muted);">Scalability Crisis</td><td>Current tools break at <100 devices</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Compliance &amp; Security Risks</h3>
+        <ul class="dash" style="font-size:14px">
+          <li>Unencrypted crash dumps</li>
+          <li>No audit trails for crash data access</li>
+          <li>PII exposure risk</li>
+          <li>GDPR/CCPA compliance gaps</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: SOLUTION OVERVIEW -->
+<div class="slide" id="s4">
+  <h2><span class="num">03</span> AI-Powered Crash Analysis Solution</h2>
+  <p class="desc">Enterprise-scale platform that transforms crash data into actionable insights, automated fixes, and predictive quality assurance.</p>
+  <div class="exec-highlight">
+    <h3 style="color:var(--green);margin-bottom:16px">Three-Phase Transformation</h3>
+    <div class="three-col">
+      <div class="card" style="border-top:3px solid var(--green)">
+        <h3 style="color:var(--green)">Phase 1: Foundation</h3>
+        <ul class="check" style="font-size:14px">
+          <li>WER integration at 100M device scale</li>
+          <li>Automated symbol server (CI/CD)</li>
+          <li>Intelligent crash bucketing</li>
+          <li>Developer triage dashboard</li>
+        </ul>
+        <div style="margin-top:12px;padding:8px 12px;background:rgba(34,197,94,.08);border-radius:6px;font-size:13px;color:var(--green)">
+          <strong>Status: POC Completed</strong> ✅
+        </div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--orange)">
+        <h3 style="color:var(--orange)">Phase 2: Intelligence</h3>
+        <ul class="dash" style="font-size:14px">
+          <li>AI-powered crash classification</li>
+          <li>Root cause analysis with code context</li>
+          <li>Predictive crash detection</li>
+          <li>Multi-app deployment</li>
+        </ul>
+        <div style="margin-top:12px;padding:8px 12px;background:rgba(245,158,11,.08);border-radius:6px;font-size:13px;color:var(--orange)">
+          <strong>Timeline: 12 weeks</strong>
+        </div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--purple)">
+        <h3 style="color:var(--purple)">Phase 3: Automation</h3>
+        <ul class="star" style="font-size:14px">
+          <li>AI-generated code fixes</li>
+          <li>Automated PR creation</li>
+          <li>Self-healing applications</li>
+          <li>Continuous learning system</li>
+        </ul>
+        <div style="margin-top:12px;padding:8px 12px;background:rgba(168,85,247,.08);border-radius:6px;font-size:13px;color:var(--purple)">
+          <strong>Vision: Crash → Fix → PR in minutes</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: ENTERPRISE ARCHITECTURE -->
+<div class="slide" id="s5">
+  <h2><span class="num">04</span> Enterprise Architecture at Scale</h2>
+  <p class="desc">Built for 100M devices with 500+ dumps/minute processing capacity on Dell Digital Cloud.</p>
+  <div class="flow" style="justify-content:center;margin-bottom:20px;gap:12px">
+    <div style="padding:8px 16px;background:rgba(34,197,94,.15);border-radius:8px;font-size:13px;color:var(--green)">WER Collection</div>
+    <div style="padding:8px 16px;background:rgba(59,130,246,.15);border-radius:8px;font-size:13px;color:var(--accent)">AI Analysis</div>
+    <div style="padding:8px 16px;background:rgba(168,85,247,.15);border-radius:8px;font-size:13px;color:var(--purple)">Auto-Fix</div>
+    <div style="padding:8px 16px;background:rgba(34,197,94,.15);border-radius:8px;font-size:13px;color:var(--green)">Developer Review</div>
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>Scale &amp; Performance</h3>
+        <table style="font-size:14px">
+          <tr><td style="color:var(--text-muted);width:40%">Device Coverage</td><td><span class="badge badge-green">~100M managed clients</span></td></tr>
+          <tr><td style="color:var(--text-muted);">Daily Volume</td><td><span class="badge badge-green">100K–1M crashes/day</span></td></tr>
+          <tr><td style="color:var(--text-muted);">Processing</td><td><span class="badge badge-green">500 dumps/min sustained</span></td></tr>
+          <tr><td style="color:var(--text-muted);">Query Speed</td><td><span class="badge badge-green">&lt;200ms P95 latency</span></td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Dell Digital Cloud Infrastructure</h3>
+        <ul style="font-size:14px">
+          <li>IOMETE Data Lake for long-term storage</li>
+          <li>PostgreSQL + Elasticsearch for indexing</li>
+          <li>Tiered object storage (Hot/Warm/Cold)</li>
+          <li>CDN for global symbol distribution</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>AI &amp; Automation Layer</h3>
+        <ul style="font-size:14px">
+          <li><strong>Classification:</strong> Automatic severity scoring</li>
+          <li><strong>Deduplication:</strong> Semantic similarity matching</li>
+          <li><strong>Root Cause:</strong> Code context analysis</li>
+          <li><strong>Fix Generation:</strong> AI-powered code repair</li>
+          <li><strong>PR Creation:</strong> Automated pull requests</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Security &amp; Compliance</h3>
+        <div class="flow" style="gap:10px;margin:8px 0">
+          <div style="padding:4px 10px;background:rgba(34,197,94,.15);border-radius:4px;font-size:11px;color:var(--green)">AES-256</div>
+          <div style="padding:4px 10px;background:rgba(168,85,247,.15);border-radius:4px;font-size:11px;color:var(--purple)">TLS 1.3</div>
+          <div style="padding:4px 10px;background:rgba(59,130,246,.15);border-radius:4px;font-size:11px;color:var(--accent)">OAuth 2.0</div>
+          <div style="padding:4px 10px;background:rgba(245,158,11,.15);border-radius:4px;font-size:11px;color:var(--orange)">PII Scrubbing</div>
+          <div style="padding:4px 10px;background:rgba(34,197,94,.15);border-radius:4px;font-size:11px;color:var(--green)">GDPR/CCPA</div>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:8px">Zero PDB external exposure; full compliance with enterprise security standards.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 6: DEVELOPER VALUE -->
+<div class="slide" id="s6">
+  <h2><span class="num">05</span> Developer Transformation</h2>
+  <p class="desc">Empowering developers with AI-driven insights that turn debugging from hours to minutes.</p>
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="color:var(--red);">Before: Manual Debugging</h3>
+        <ul class="x" style="font-size:15px">
+          <li>"My app crashes sometimes" - vague reports</li>
+          <li>Manual dump collection from users</li>
+          <li>40+ hours per crash investigation</li>
+          <li>No prioritization - all crashes equal</li>
+          <li>Duplicate investigations across teams</li>
+          <li>Can't reproduce in development</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">After: AI-Powered Workflow</h3>
+        <ul class="check" style="font-size:15px">
+          <li>"50 customers crashing in PluginManager.LoadPlugin" - precise</li>
+          <li>Automatic collection from 100M devices</li>
+          <li>&lt;2 hours from crash to root cause</li>
+          <li>AI prioritizes by business impact</li>
+          <li>Deduplication eliminates repeat work</li>
+          <li>Exact line numbers + variable values</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="roi-box">
+        <h3 style="color:var(--green);margin-bottom:12px">Productivity Gains</h3>
+        <div class="value-prop">
+          <span class="value-icon">⚡</span>
+          <div>
+            <strong>80% Reduction</strong> in debugging time
+            <div style="font-size:12px;color:var(--text-muted)">From 40+ hours to &lt;2 hours per crash</div>
+          </div>
+        </div>
+        <div class="value-prop">
+          <span class="value-icon">🎯</span>
+          <div>
+            <strong>15:1 Deduplication</strong> ratio
+            <div style="font-size:12px;color:var(--text-muted)">One fix resolves 15 similar crashes</div>
+          </div>
+        </div>
+        <div class="value-prop">
+          <span class="value-icon">🤖</span>
+          <div>
+            <strong>AI-Assisted</strong> fix suggestions
+            <div style="font-size:12px;color:var(--text-muted)">Code fixes generated automatically</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Real Developer Example</h3>
+        <div style="font-family:var(--mono);font-size:12px;background:rgba(59,130,246,.05);padding:12px;border-radius:6px;margin:8px 0">
+          <div style="color:var(--orange)">Before: "App crashes somewhere in Security module"</div>
+          <div style="color:var(--green)">After: "InvalidFileHandleException in PathHelper.cs:127 when accessing locked directories"</div>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:8px">Developers get exact location, context, and AI-suggested fixes.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 7: AI VISION -->
+<div class="slide" id="s7">
+  <h2><span class="num">06</span> AI-Powered Future: Self-Healing Systems</h2>
+  <p class="desc">The ultimate vision: crashes automatically analyzed, fixed, and deployed without human intervention.</p>
+  <div class="timeline">
+    <div class="timeline-item"><div class="timeline-dot ai"></div><div><div class="timeline-label">1. Intelligent Classification</div><div class="timeline-sub">AI categorizes crashes by severity, business impact, and fix complexity</div></div></div>
+    <div class="timeline-item"><div class="timeline-dot ai"></div><div><div class="timeline-label">2. Root Cause Analysis</div><div class="timeline-sub">LLM analyzes stack trace + source code to identify exact bug pattern</div></div></div>
+    <div class="timeline-item"><div class="timeline-dot ai"></div><div><div class="timeline-label">3. Code Context Retrieval</div><div class="timeline-sub">RAG system fetches relevant source files and historical fixes</div></div></div>
+    <div class="timeline-item"><div class="timeline-dot ai"></div><div><div class="timeline-label">4. Fix Generation</div><div class="timeline-sub">AI generates code patches with confidence scoring</div></div></div>
+    <div class="timeline-item"><div class="timeline-dot ai"></div><div><div class="timeline-label">5. Automated Testing</div><div class="timeline-sub">Static analysis + CI test validation before PR creation</div></div></div>
+    <div class="timeline-item"><div class="timeline-dot done"></div><div><div class="timeline-label">6. Human Review &amp; Deploy</div><div class="timeline-sub">Developer approves AI-generated fix for production</div></div></div>
+  </div>
+  <div class="exec-highlight" style="margin-top:20px">
+    <h3 style="color:var(--purple);">AI Success Metrics</h3>
+    <div class="stat-row" style="gap:16px">
+      <div class="stat-box" style="padding:12px;border-top:2px solid var(--purple)">
+        <div style="font-size:14px;font-weight:600;color:var(--purple)">85% Classification Accuracy</div>
+        <div class="label" style="font-size:11px">AI correctly identifies crash type</div>
+      </div>
+      <div class="stat-box" style="padding:12px;border-top:2px solid var(--purple)">
+        <div style="font-size:14px;font-weight:600;color:var(--purple)">75% Root Cause Accuracy</div>
+        <div class="label" style="font-size:11px">AI identifies exact bug location</div>
+      </div>
+      <div class="stat-box" style="padding:12px;border-top:2px solid var(--purple)">
+        <div style="font-size:14px;font-weight:600;color:var(--purple)">70% Fix Success Rate</div>
+        <div class="label" style="font-size:11px">Generated fixes pass all tests</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8: POC VALIDATION -->
+<div class="slide" id="s8">
+  <h2><span class="num">07</span> POC: Core Pipeline Validated</h2>
+  <p class="desc">We've built and tested the foundation with Dell Digital Delivery, proving the technical feasibility of the full vision.</p>
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <h3 style="color:var(--green);">What We Built</h3>
+        <table style="font-size:14px">
+          <tr><td style="color:var(--text-muted);width:40%">WER Integration</td><td><span class="badge badge-green">✅</span> Crash collection</td></tr>
+          <tr><td style="color:var(--text-muted);">Symbol Server</td><td><span class="badge badge-green">✅</span> CI/CD PDB publishing</td></tr>
+          <tr><td style="color:var(--text-muted);">Processing Pipeline</td><td><span class="badge badge-green">✅</span> Extract &amp; deduplicate</td></tr>
+          <tr><td style="color:var(--text-muted);">Bucketing</td><td><span class="badge badge-green">✅</span> SHA-256 signatures</td></tr>
+          <tr><td style="color:var(--text-muted);">Dashboard</td><td><span class="badge badge-green">✅</span> 5-page React app</td></tr>
+          <tr><td style="color:var(--text-muted);">Symbolication</td><td><span class="badge badge-green">✅</span> Stack trace resolution</td></tr>
+        </table>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>POC Results</h3>
+        <div class="stat-row" style="gap:12px;margin:0">
+          <div class="stat-box" style="padding:10px;border-top:2px solid var(--green)">
+            <div style="font-size:13px;font-weight:600;color:var(--green)">27 PDBs</div>
+            <div class="label" style="font-size:11px">Symbolicated</div>
+          </div>
+          <div class="stat-box" style="padding:10px;border-top:2px solid var(--green)">
+            <div style="font-size:13px;font-weight:600;color:var(--green)">6 Buckets</div>
+            <div class="label" style="font-size:11px">From 18 crashes</div>
+          </div>
+          <div class="stat-box" style="padding:10px;border-top:2px solid var(--green)">
+            <div style="font-size:13px;font-weight:600;color:var(--green)">5 Pages</div>
+            <div class="label" style="font-size:11px">Dashboard UI</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>Before vs After Symbolication</h3>
+        <div style="font-family:var(--mono);font-size:11px;line-height:1.7;margin:8px 0">
+          <div style="color:var(--orange);margin-bottom:8px">Before (Raw addresses):</div>
+          <div>0:000&gt; k</div>
+          <div>00 00007ff6`1a2b3c4d 00007ff8`12345678</div>
+          <div>&nbsp;&nbsp; AppA+0x1f2a</div>
+          <div style="color:var(--green);margin:8px 0">After (Symbolicated):</div>
+          <div>0:000&gt; k</div>
+          <div>00 AppA!ProcessData+0x120</div>
+          <div>01 AppA!HandleRequest+0x45</div>
+          <div>02 AppA!MainLoop+0x234</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Live Demo Available</h3>
+        <div style="font-family:var(--mono);font-size:13px;background:rgba(34,197,94,.05);padding:12px;border-radius:6px;margin:8px 0">
+          <div>🌐 Dashboard: http://localhost:3000</div>
+          <div>🔌 API: http://localhost:5100</div>
+          <div>📊 Real crash data from Dell Digital Delivery</div>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:8px">Working system demonstrates end-to-end pipeline from crash collection to developer dashboard.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 9: BUSINESS VALUE -->
+<div class="slide" id="s9">
+  <h2><span class="num">08</span> Business Value &amp; ROI</h2>
+  <p class="desc">Quantifiable benefits across customer experience, developer productivity, and operational excellence.</p>
+  <div class="roi-box">
+    <h3 style="color:var(--green);margin-bottom:16px">Direct Business Impact</h3>
+    <div class="three-col">
+      <div class="card">
+        <h3 style="color:var(--green);">Customer Experience</h3>
+        <ul class="check" style="font-size:14px">
+          <li><strong>50% reduction</strong> in crash rates</li>
+          <li><strong>90% faster</strong> issue resolution</li>
+          <li><strong>Proactive</strong> problem prevention</li>
+          <li><strong>Higher</strong> customer satisfaction</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Developer Productivity</h3>
+        <ul style="font-size:14px">
+          <li><strong>80% reduction</strong> in debugging time</li>
+          <li><strong>15:1 deduplication</strong> eliminates repeat work</li>
+          <li><strong>AI-assisted</strong> fix suggestions</li>
+          <li><strong>Focus on</strong> features, not firefighting</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--orange);">Operational Excellence</h3>
+        <ul class="dash" style="font-size:14px">
+          <li><strong>Automated</strong> quality monitoring</li>
+          <li><strong>Data-driven</strong> release decisions</li>
+          <li><strong>Reduced</strong> support costs</li>
+          <li><strong>Compliance</strong> by design</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="exec-highlight" style="margin-top:20px">
+    <h3 style="color:var(--green);">ROI Projections</h3>
+    <div class="stat-row" style="gap:16px">
+      <div class="stat-box" style="padding:12px;border-top:2px solid var(--green)">
+        <div style="font-size:16px;font-weight:600;color:var(--green)">$2.5M</div>
+        <div class="label" style="font-size:11px">Annual developer productivity savings</div>
+      </div>
+      <div class="stat-box" style="padding:12px;border-top:2px solid var(--green)">
+        <div style="font-size:16px;font-weight:600;color:var(--green)">30%</div>
+        <div class="label" style="font-size:11px">Reduction in support ticket volume</div>
+      </div>
+      <div class="stat-box" style="padding:12px;border-top:2px solid var(--green)">
+        <div style="font-size:16px;font-weight:600;color:var(--green)">6 months</div>
+        <div class="label" style="font-size:11px">Payback period</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10: NEXT STEPS -->
+<div class="slide" id="s10">
+  <h2><span class="num">09</span> Next Steps &amp; Investment Request</h2>
+  <p class="desc">From validated POC to enterprise deployment: a clear path to transform CSG reliability.</p>
+  <div class="three-col">
+    <div class="card" style="border-top:3px solid var(--accent)">
+      <h3>Microsoft Partnership</h3>
+      <ul style="font-size:14px">
+        <li>Execute WER API data sharing agreement</li>
+        <li>Obtain production API keys</li>
+        <li>Legal review of crash data usage</li>
+        <li>Technical coordination with Microsoft</li>
+      </ul>
+      <div style="margin-top:12px;padding:8px 12px;background:rgba(59,130,246,.08);border-radius:6px;font-size:12px;color:var(--accent)">
+        <strong>Timeline: 4 weeks</strong>
+      </div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--orange)">
+      <h3 style="color:var(--orange);">Engineering Investment</h3>
+      <ul class="dash" style="font-size:14px">
+        <li>Dedicated team (4 engineers, 1 PM)</li>
+        <li>Dell Digital Cloud infrastructure</li>
+        <li>CI/CD symbol server integration</li>
+        <li>Multi-application deployment</li>
+      </ul>
+      <div style="margin-top:12px;padding:8px 12px;background:rgba(245,158,11,.08);border-radius:6px;font-size:12px;color:var(--orange)">
+        <strong>Timeline: 12 weeks</strong>
+      </div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--purple)">
+      <h3 style="color:var(--purple);">AI &amp; Automation</h3>
+      <ul class="star" style="font-size:14px">
+        <li>Azure OpenAI integration</li>
+        <li>Source code RAG pipeline</li>
+        <li>Fix generation framework</li>
+        <li>Pilot with 2 development teams</li>
+      </ul>
+      <div style="margin-top:12px;padding:8px 12px;background:rgba(168,85,247,.08);border-radius:6px;font-size:12px;color:var(--purple)">
+        <strong>Timeline: 16 weeks</strong>
+      </div>
+    </div>
+  </div>
+  <div class="exec-highlight" style="margin-top:20px">
+    <h3 style="color:var(--green);">Investment Summary</h3>
+    <div class="two-col">
+      <div>
+        <h4>Phase 1 (12 weeks): Foundation</h4>
+        <ul style="font-size:14px">
+          <li>WER integration + Symbol server</li>
+          <li>Multi-app deployment</li>
+          <li>Production dashboards</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Phase 2 (16 weeks): AI Integration</h4>
+        <ul style="font-size:14px">
+          <li>AI crash classification</li>
+          <li>Root cause analysis</li>
+          <li>Automated fix generation</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:12px;background:rgba(34,197,94,.05);border-radius:8px">
+      <strong style="color:var(--green)">Total Investment: $1.2M</strong> | <strong style="color:var(--green)">Expected ROI: 200%+ in Year 1</strong>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11: ASK -->
+<div class="slide" id="s11">
+  <h2><span class="num">10</span> The Ask</h2>
+  <p class="desc">We have a validated POC and clear roadmap. We need executive support to accelerate CSG reliability transformation.</p>
+  <div class="exec-highlight">
+    <h3 style="color:var(--green);margin-bottom:16px">Executive Support Needed</h3>
+    <div class="three-col">
+      <div class="card" style="border-left:4px solid var(--accent)">
+        <h3>Strategic Alignment</h3>
+        <ul style="font-size:14px">
+          <li>Champion Microsoft partnership</li>
+          <li>Align with CSG reliability goals</li>
+          <li>Remove organizational barriers</li>
+          <li>Ensure cross-team collaboration</li>
+        </ul>
+      </div>
+      <div class="card" style="border-left:4px solid var(--orange)">
+        <h3 style="color:var(--orange);">Resource Allocation</h3>
+        <ul class="dash" style="font-size:14px">
+          <li>Approve $1.2M investment</li>
+          <li>Dedicate engineering team</li>
+          <li>Infrastructure provisioning</li>
+          <li>AI/ML budget allocation</li>
+        </ul>
+      </div>
+      <div class="card" style="border-left:4px solid var(--purple)">
+        <h3 style="color:var(--purple);">Risk Mitigation</h3>
+        <ul class="star" style="font-size:14px">
+          <li>Fast-track legal approvals</li>
+          <li>Security/compliance sign-off</li>
+          <li>Change management support</li>
+          <li>Success metrics tracking</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="quote" style="margin-top:20px;border-left-color:var(--purple)">
+    "This isn't just a crash dashboard - it's an AI-powered reliability platform that will transform how CSG delivers software quality to millions of customers."
+  </div>
+  <div class="stat-row" style="margin-top:20px;justify-content:center">
+    <div class="stat-box" style="border-top:3px solid var(--green)">
+      <div style="font-size:16px;font-weight:600;color:var(--green)">POC Complete</div>
+      <div class="label">Core pipeline validated</div>
+    </div>
+    <div class="stat-box" style="border-top:3px solid var(--orange)">
+      <div style="font-size:16px;font-weight:600;color:var(--orange)">Ready to Scale</div>
+      <div class="label">Enterprise architecture designed</div>
+    </div>
+    <div class="stat-box" style="border-top:3px solid var(--purple)">
+      <div style="font-size:16px;font-weight:600;color:var(--purple)">AI Vision</div>
+      <div class="label">Self-healing systems roadmap</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 12: THANK YOU -->
+<div class="slide slide-title" id="s12">
+  <div>
+    <h1>Thank <span class="accent">You</span></h1>
+    <div class="subtitle">Questions &amp; Discussion</div>
+    <div class="exec-highlight" style="margin:20px auto;max-width:800px">
+      <h3 style="color:var(--green);margin-bottom:12px">Key Takeaways</h3>
+      <ul class="check" style="font-size:15px">
+        <li><strong>CSG Goals:</strong> Systematic crash reduction and improved customer experience</li>
+        <li><strong>AI-Powered Solution:</strong> From manual debugging to automated fix generation</li>
+        <li><strong>POC Validated:</strong> Core pipeline working with Dell Digital Delivery</li>
+        <li><strong>Clear ROI:</strong> $2.5M annual savings, 6-month payback</li>
+        <li><strong>Ready to Deploy:</strong> 28-week timeline to full AI automation</li>
+      </ul>
+    </div>
+    <div class="meta" style="margin-top:28px">Dell Technologies &bull; Client Solutions Group &bull; Software Engineering<br><span style="margin-top:6px;display:inline-block">Transforming Reliability with AI</span></div>
+  </div>
+</div>
+
+<!-- NAVIGATION -->
+<div class="nav-bar">
+  <button id="prev" onclick="navigate(-1)">&#8592; Previous</button>
+  <span class="counter"><span id="current">1</span> / <span id="total">12</span></span>
+  <button id="next" onclick="navigate(1)">Next &#8594;</button>
+</div>
+<script>
+  let current=0;const slides=document.querySelectorAll('.slide');const total=slides.length;document.getElementById('total').textContent=total;
+  function show(i){slides.forEach((s,j)=>s.classList.toggle('active',j===i));document.getElementById('current').textContent=i+1;document.getElementById('prev').disabled=i===0;document.getElementById('next').disabled=i===total-1}
+  function navigate(d){current=Math.max(0,Math.min(total-1,current+d));show(current)}
+  document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1)}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1)}if(e.key==='Home'){current=0;show(current)}if(e.key==='End'){current=total-1;show(current)}});
+  show(0);
+</script>
+</body>
+</html>

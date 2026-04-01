@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.14" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Link shared source files from Console project (avoids dual-entrypoint conflict) -->
+    <Compile Include="..\CrashCollector.Console\Data\CrashDb.cs" Link="Data\CrashDb.cs" />
+    <Compile Include="..\CrashCollector.Console\Data\CrashRepository.cs" Link="Data\CrashRepository.cs" />
+    <Compile Include="..\CrashCollector.Console\Data\BucketRepository.cs" Link="Data\BucketRepository.cs" />
+    <Compile Include="..\CrashCollector.Console\Models\CrashReport.cs" Link="Models\CrashReport.cs" />
+    <Compile Include="..\CrashCollector.Console\Models\CrashMetadata.cs" Link="Models\CrashMetadata.cs" />
+    <Compile Include="..\CrashCollector.Console\Models\StackSignature.cs" Link="Models\StackSignature.cs" />
+    <Compile Include="..\CrashCollector.Console\ILocalDumpStore.cs" Link="ILocalDumpStore.cs" />
+    <Compile Include="..\CrashCollector.Console\Bucketizer.cs" Link="Bucketizer.cs" />
+  </ItemGroup>
+
+</Project>

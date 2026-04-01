@@ -1,0 +1,117 @@
+{
+  "version": 2,
+  "dgSpecHash": "1cZAZBE70Ik=",
+  "success": true,
+  "projectFilePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Narendra_K_Meena\\.nuget\\packages\\microsoft.data.sqlite\\9.0.3\\microsoft.data.sqlite.9.0.3.nupkg.sha512",
+    "C:\\Users\\Narendra_K_Meena\\.nuget\\packages\\microsoft.data.sqlite.core\\9.0.3\\microsoft.data.sqlite.core.9.0.3.nupkg.sha512",
+    "C:\\Users\\Narendra_K_Meena\\.nuget\\packages\\sqlitepclraw.bundle_e_sqlite3\\2.1.10\\sqlitepclraw.bundle_e_sqlite3.2.1.10.nupkg.sha512",
+    "C:\\Users\\Narendra_K_Meena\\.nuget\\packages\\sqlitepclraw.core\\2.1.10\\sqlitepclraw.core.2.1.10.nupkg.sha512",
+    "C:\\Users\\Narendra_K_Meena\\.nuget\\packages\\sqlitepclraw.lib.e_sqlite3\\2.1.10\\sqlitepclraw.lib.e_sqlite3.2.1.10.nupkg.sha512",
+    "C:\\Users\\Narendra_K_Meena\\.nuget\\packages\\sqlitepclraw.provider.e_sqlite3\\2.1.10\\sqlitepclraw.provider.e_sqlite3.2.1.10.nupkg.sha512",
+    "C:\\Users\\Narendra_K_Meena\\.nuget\\packages\\system.memory\\4.5.3\\system.memory.4.5.3.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/v3/nuget-release-local/FindPackagesById()?id='Microsoft.Data.Sqlite'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite",
+      "targetGraphs": []
+    },
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/nuget-release-local/FindPackagesById()?id='Microsoft.Data.Sqlite'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite",
+      "targetGraphs": []
+    },
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/v3/dtp-nugets/FindPackagesById()?id='Microsoft.Data.Sqlite'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite",
+      "targetGraphs": []
+    },
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/asimov-library/FindPackagesById()?id='Microsoft.Data.Sqlite'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite",
+      "targetGraphs": []
+    },
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/v3/astra-nugets-release/FindPackagesById()?id='Microsoft.Data.Sqlite'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite",
+      "targetGraphs": []
+    },
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite.Core' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/v3/dtp-nugets/FindPackagesById()?id='Microsoft.Data.Sqlite.Core'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite.Core",
+      "targetGraphs": []
+    },
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite.Core' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/nuget-release-local/FindPackagesById()?id='Microsoft.Data.Sqlite.Core'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite.Core",
+      "targetGraphs": []
+    },
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite.Core' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/asimov-library/FindPackagesById()?id='Microsoft.Data.Sqlite.Core'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite.Core",
+      "targetGraphs": []
+    },
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite.Core' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/v3/nuget-release-local/FindPackagesById()?id='Microsoft.Data.Sqlite.Core'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite.Core",
+      "targetGraphs": []
+    },
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "message": "Failed to retrieve information about 'Microsoft.Data.Sqlite.Core' from remote source 'https://artifactory.cpg.dell.com/artifactory/api/nuget/v3/astra-nugets-release/FindPackagesById()?id='Microsoft.Data.Sqlite.Core'&semVerLevel=2.0.0'.",
+      "projectPath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\PlayGround\\crash-poc\\CrashCollector.Console\\CrashCollector.Console.csproj",
+      "libraryId": "Microsoft.Data.Sqlite.Core",
+      "targetGraphs": []
+    }
+  ]
+}

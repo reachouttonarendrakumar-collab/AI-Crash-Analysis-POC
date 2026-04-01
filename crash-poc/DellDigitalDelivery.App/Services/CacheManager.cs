@@ -2,8 +2,6 @@ namespace DellDigitalDelivery.App.Services;
 
 /// <summary>
 /// Manages cached content metadata for download resumption.
-/// BUG: ReadPage does not validate the file path before opening,
-/// causing an I/O error (0xC0000006) when the cache file doesn't exist.
 /// </summary>
 public class CacheManager
 {
@@ -16,18 +14,27 @@ public class CacheManager
 
     /// <summary>
     /// Reads a page of cached data from disk at the given offset.
-    /// BUG: Does not check if file exists before opening, and does not
-    /// handle the case where offset exceeds file length.
     /// </summary>
     public byte[] ReadPage(long offset, int pageSize = 4096)
     {
-        // BUG: Hardcoded path that doesn't exist — causes FileNotFoundException
         string cachePath = Path.Combine(_cacheDir, "content_cache.dat");
 
-        // BUG: No existence check — will throw IOException
+        // Check if the file exists before attempting to open it
+        if (!File.Exists(cachePath))
+        {
+            Console.WriteLine($"[CacheManager] Cache file not found: {cachePath}");
+            return Array.Empty<byte>();
+        }
+
         using var fs = new FileStream(cachePath, FileMode.Open, FileAccess.Read);
 
-        // BUG: No bounds check — offset may exceed file length
+        // Check if the offset is within the file length
+        if (offset >= fs.Length)
+        {
+            Console.WriteLine($"[CacheManager] Offset {offset} exceeds file length {fs.Length}");
+            return Array.Empty<byte>();
+        }
+
         fs.Seek(offset, SeekOrigin.Begin);
 
         byte[] buffer = new byte[pageSize];

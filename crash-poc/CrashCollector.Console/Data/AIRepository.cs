@@ -68,6 +68,26 @@ public sealed class AIRepository
         return rows;
     }
 
+    /// <summary>Returns only the most recent analysis per bucket.</summary>
+    public List<AIAnalysisRow> GetLatestAnalysesPerBucket(int limit = 100)
+    {
+        using var cmd = _db.Connection.CreateCommand();
+        cmd.CommandText = """
+            SELECT a.* FROM AIAnalysis a
+            INNER JOIN (
+                SELECT BucketId, MAX(CreatedAtUtc) AS MaxCreated
+                FROM AIAnalysis GROUP BY BucketId
+            ) latest ON a.BucketId = latest.BucketId AND a.CreatedAtUtc = latest.MaxCreated
+            ORDER BY a.CreatedAtUtc DESC LIMIT @limit;
+            """;
+        cmd.Parameters.AddWithValue("@limit", limit);
+
+        var rows = new List<AIAnalysisRow>();
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) rows.Add(ReadAnalysisRow(r));
+        return rows;
+    }
+
     public AIAnalysisRow? GetAnalysisByBucket(string bucketId)
     {
         using var cmd = _db.Connection.CreateCommand();
@@ -143,6 +163,62 @@ public sealed class AIRepository
         using var r = cmd.ExecuteReader();
         while (r.Read()) rows.Add(ReadFixRow(r));
         return rows;
+    }
+
+    /// <summary>Returns only the most recent fix per bucket.</summary>
+    public List<AIFixRow> GetLatestFixesPerBucket(int limit = 100)
+    {
+        using var cmd = _db.Connection.CreateCommand();
+        cmd.CommandText = """
+            SELECT f.* FROM AIFixes f
+            INNER JOIN (
+                SELECT BucketId, MAX(CreatedAtUtc) AS MaxCreated
+                FROM AIFixes GROUP BY BucketId
+            ) latest ON f.BucketId = latest.BucketId AND f.CreatedAtUtc = latest.MaxCreated
+            ORDER BY f.CreatedAtUtc DESC LIMIT @limit;
+            """;
+        cmd.Parameters.AddWithValue("@limit", limit);
+
+        var rows = new List<AIFixRow>();
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) rows.Add(ReadFixRow(r));
+        return rows;
+    }
+
+    /// <summary>Deletes all but the latest analysis and fix per bucket.
+    /// Fixes are deleted first to satisfy foreign key constraints.</summary>
+    public int PurgeStaleRecords()
+    {
+        int deleted = 0;
+        // Delete stale fixes FIRST (FK references AIAnalysis)
+        using (var cmd = _db.Connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                DELETE FROM AIFixes WHERE FixId NOT IN (
+                    SELECT FixId FROM AIFixes f
+                    INNER JOIN (
+                        SELECT BucketId, MAX(CreatedAtUtc) AS MaxCreated
+                        FROM AIFixes GROUP BY BucketId
+                    ) latest ON f.BucketId = latest.BucketId AND f.CreatedAtUtc = latest.MaxCreated
+                );
+                """;
+            deleted += cmd.ExecuteNonQuery();
+        }
+        // Then delete stale analyses
+        using (var cmd = _db.Connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                DELETE FROM AIAnalysis WHERE AnalysisId NOT IN (
+                    SELECT AnalysisId FROM AIAnalysis a
+                    INNER JOIN (
+                        SELECT BucketId, MAX(CreatedAtUtc) AS MaxCreated
+                        FROM AIAnalysis GROUP BY BucketId
+                    ) latest ON a.BucketId = latest.BucketId AND a.CreatedAtUtc = latest.MaxCreated
+                );
+                """;
+            deleted += cmd.ExecuteNonQuery();
+        }
+        return deleted;
     }
 
     public AIFixRow? GetFixByBucket(string bucketId)

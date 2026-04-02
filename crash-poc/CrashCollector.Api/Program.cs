@@ -278,9 +278,11 @@ app.MapGet("/buckets/{bucketId}", (string bucketId, BucketRepository bucketRepo,
 //  AI ANALYSIS
 // ═════════════════════════════════════════════════════════════════════════
 
-app.MapGet("/ai/analyses", (AIRepository aiRepo, int? limit) =>
+app.MapGet("/ai/analyses", (AIRepository aiRepo, int? limit, bool? all) =>
 {
-    var rows = aiRepo.GetAllAnalyses(limit ?? 100);
+    var rows = (all == true)
+        ? aiRepo.GetAllAnalyses(limit ?? 100)
+        : aiRepo.GetLatestAnalysesPerBucket(limit ?? 100);
     return Results.Ok(new { count = rows.Count, analyses = rows });
 })
 .WithName("GetAIAnalyses");
@@ -331,9 +333,11 @@ app.MapPost("/ai/analyze/{bucketId}", async (
 //  AI FIXES
 // ═════════════════════════════════════════════════════════════════════════
 
-app.MapGet("/ai/fixes", (AIRepository aiRepo, int? limit) =>
+app.MapGet("/ai/fixes", (AIRepository aiRepo, int? limit, bool? all) =>
 {
-    var rows = aiRepo.GetAllFixes(limit ?? 100);
+    var rows = (all == true)
+        ? aiRepo.GetAllFixes(limit ?? 100)
+        : aiRepo.GetLatestFixesPerBucket(limit ?? 100);
     return Results.Ok(new { count = rows.Count, fixes = rows });
 })
 .WithName("GetAIFixes");
@@ -346,6 +350,13 @@ app.MapGet("/ai/fix/{fixId}", (string fixId, AIRepository aiRepo) =>
     return Results.Ok(fix);
 })
 .WithName("GetAIFixById");
+
+app.MapPost("/ai/purge", (AIRepository aiRepo) =>
+{
+    var deleted = aiRepo.PurgeStaleRecords();
+    return Results.Ok(new { purged = deleted, message = $"Deleted {deleted} stale analysis/fix records." });
+})
+.WithName("PurgeStaleRecords");
 
 app.MapPost("/ai/fix/{bucketId}", async (
     string bucketId,

@@ -129,7 +129,7 @@ export default function OverviewPage() {
         <div className="stat-card">
           <div className="stat-label">AI Analyzed</div>
           <div className="stat-value" style={{ color: 'var(--accent)' }}>{aiAnalyzed}</div>
-          <div className="stat-sub">Buckets analyzed by Gemini</div>
+          <div className="stat-sub">Buckets analyzed by AI</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Fixes Generated</div>
@@ -146,7 +146,7 @@ export default function OverviewPage() {
           <div className="stat-value">
             {aiAnalyzed > 0 ? ((aiFixed / aiAnalyzed) * 100).toFixed(0) : '0'}%
           </div>
-          <div className="stat-sub">Of analyzed buckets</div>
+          <div className="stat-sub">Of analyzed buckets with PR</div>
         </div>
       </div>
 

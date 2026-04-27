@@ -1,0 +1,39 @@
+// Services/PackageDownloader.cs
+public async Task<DownloadResult> DownloadPackageAsync(string downloadUrl, CancellationToken ct)
+{
+    // ----- FIX: guard against null/invalid URLs -----
+    if (string.IsNullOrWhiteSpace(downloadUrl))
+    {
+        _logger.Error("DownloadPackageAsync called with a null or empty URL.");
+        return DownloadResult.Failure("Invalid download URL.");
+    }
+
+    if (!Uri.TryCreate(downloadUrl, UriKind.Absolute, out var uriResult))
+    {
+        _logger.Error("DownloadPackageAsync received a malformed URL: {Url}", downloadUrl);
+        return DownloadResult.Failure("Malformed download URL.");
+    }
+
+    try
+    {
+        using var httpClient = _httpClientFactory.CreateClient();
+        using var response = await httpClient.GetAsync(uriResult, ct).ConfigureAwait(false);
+
+        response.EnsureSuccessStatusCode();
+
+        var content = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+        // ... further processing ...
+
+        return DownloadResult.Success(content);
+    }
+    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+    {
+        _logger.Info("Package download cancelled by caller.");
+        return DownloadResult.Canceled();
+    }
+    catch (Exception ex)
+    {
+        _logger.Error(ex, "Unexpected error while downloading package from {Url}", downloadUrl);
+        return DownloadResult.Failure(ex.Message);
+    }
+}
